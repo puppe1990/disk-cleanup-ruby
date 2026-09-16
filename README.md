@@ -39,10 +39,28 @@ Use `--top=N` to control how many rows each section prints.
 
 Use `--map-path=PATH` to inspect one specific directory and rank its largest immediate children.
 
-## Tests
+## Checks
 
 ```bash
-ruby test_disk_cleanup.rb
+gem install rubocop
+rubocop                     # lint and formatting
+ruby test_disk_cleanup.rb   # test suite
+```
+
+The same checks run in CI on every push to `main` and on every pull request.
+
+## Pre-commit Hooks
+
+Install the hook once per clone (requires [pre-commit](https://pre-commit.com), for example `brew install pre-commit`):
+
+```bash
+pre-commit install
+```
+
+Every commit then runs rubocop over the staged Ruby files and the full test suite. Rubocop applies its safe corrections and aborts the commit so the changes can be reviewed. To run the hooks manually:
+
+```bash
+pre-commit run --all-files
 ```
 
 ## Notes

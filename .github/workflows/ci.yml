@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Lint and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+
+      # Keep the version in sync with the rubocop rev in .pre-commit-config.yaml
+      - name: Install rubocop
+        run: gem install rubocop --version "~> 1.88.2" --no-document
+
+      - name: Lint
+        run: rubocop
+
+      - name: Tests
+        run: ruby test_disk_cleanup.rb
