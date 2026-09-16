@@ -9,16 +9,35 @@ Ruby script to reclaim disk space on macOS by removing regenerable caches, Docke
 - `caches`: remove `~/.npm/_cacache`, `~/.cache`, `~/.bun/install/cache`, and children under `~/Library/Caches`
 - `homebrew`: remove `~/Library/Caches/Homebrew/downloads`
 - `docker`: remove Docker Desktop local data directories
-- `projects`: remove regenerable directories like `node_modules`, `.next`, `dist`, `build`, `.turbo`, `.cache`, `coverage` under `~/Desktop/Projetos`
+- `claude`: remove `~/Library/Application Support/Claude/vm_bundles`
+- `projects`: recursively remove regenerable directories like `node_modules`, `.next`, `dist`, `build`, `.turbo`, `.cache`, `coverage`, `output_directory`, `tmp`, `.zig-cache`, `.elixir_ls`, `_build`, `deps`, `.netlify`, and `.pytest_cache` under `~/Desktop/Projetos`
 
 ## Usage
 
 ```bash
 ruby disk_cleanup.rb --dry-run
 ruby disk_cleanup.rb
+ruby disk_cleanup.rb --map
+ruby disk_cleanup.rb --map --top=5
+ruby disk_cleanup.rb --map-path="$HOME/Library/Application Support/Claude" --top=20
+ruby disk_cleanup.rb --only=claude
 ruby disk_cleanup.rb --only=downloads,caches,homebrew
 ruby disk_cleanup.rb --skip=docker
+ruby disk_cleanup.rb --min-age-days=7
+ruby disk_cleanup.rb --force
 ```
+
+## Disk Usage Mapping
+
+Use `--map` to inspect the largest directories without deleting anything. The report shows:
+
+- top directories in `HOME`, excluding `Library` and the configured projects root to avoid duplication
+- top directories in the projects root
+- top directories in `~/Library/Application Support`
+
+Use `--top=N` to control how many rows each section prints.
+
+Use `--map-path=PATH` to inspect one specific directory and rank its largest immediate children.
 
 ## Tests
 
@@ -29,5 +48,10 @@ ruby test_disk_cleanup.rb
 ## Notes
 
 - `--dry-run` uses the same discovery logic as live cleanup
+- project cleanup walks the project tree recursively and prunes matching cache/build directories in place
 - missing paths are ignored
 - Docker cleanup removes local Docker Desktop data, so images, containers, and volumes will need to be recreated or pulled again
+- directories used by a running process are skipped and listed at the end of the report; `--force` removes them anyway
+- a process marks a directory as in use when its working directory is inside that directory, or when the directory is inside the process working directory (a dev server running at the project root, for example). Broad locations such as the home directory, `Desktop`, `Downloads`, `Library`, and the projects root are not treated as "in use"
+- `--min-age-days=DAYS` only removes Downloads installers and Trash items older than `DAYS`, based on modification time; the default is `0` (no age filter)
+- the exit status is `1` when any planned path could not be removed; the failures are listed at the end of the report
