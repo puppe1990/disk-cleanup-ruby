@@ -39,12 +39,28 @@ Use `--top=N` to control how many rows each section prints.
 
 Use `--map-path=PATH` to inspect one specific directory and rank its largest immediate children.
 
+## Layout
+
+```
+disk_cleanup.rb              command line entry point
+lib/disk_cleanup.rb          requires the library
+lib/disk_cleanup/*.rb        one responsibility per file
+test/disk_cleanup/*_test.rb  tests mirroring lib/
+```
+
+- `options.rb` parses the command line into `Settings`
+- `inventory.rb` finds what to clean, `usage_guard.rb` skips what a running process is using
+- `removal.rb` deletes and verifies, `disk_usage.rb` measures
+- `usage_map.rb` and `reporter.rb` render the map and the cleanup summary
+- `runner.rb` ties the pieces together
+
 ## Checks
 
 ```bash
 gem install rubocop
-rubocop                     # lint and formatting
-ruby test_disk_cleanup.rb   # test suite
+rake lint     # rubocop
+rake test     # test suite
+rake          # both
 ```
 
 The same checks run in CI on every push to `main` and on every pull request.

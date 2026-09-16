@@ -24,4 +24,4 @@ jobs:
         run: rubocop
 
       - name: Tests
-        run: ruby test_disk_cleanup.rb
+        run: rake test

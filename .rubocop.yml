@@ -24,7 +24,9 @@ Lint/StructNewOverride:
   Enabled: false
 
 Style/Documentation:
-  Enabled: false
+  Enabled: true
+  Exclude:
+    - "test/**/*"
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
