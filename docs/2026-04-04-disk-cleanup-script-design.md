@@ -24,6 +24,8 @@ The script will live at `tools/disk_cleanup.rb` and support:
 - `--skip=a,b,c`: skip selected categories
 - `--projects-root=PATH`: override the default projects root for project artifact cleanup
 - `--home=PATH`: override home directory for controlled testing
+- `--min-age-days=DAYS`: only remove `downloads` and `trash` items older than `DAYS` days
+- `--force`: remove paths even when a running process is using them
 
 ## Output
 
@@ -39,3 +41,7 @@ The script will print:
 - default categories target only regenerable files or clearly disposable installer/archive files
 - missing paths are ignored
 - `dry-run` uses the same discovery logic as real execution
+- directories used by a running process are skipped and reported, unless `--force` is passed
+- broad locations (home, `Desktop`, `Downloads`, `Library`, projects root) never count as "in use", so a shell parked there does not block cleanup
+- `--min-age-days` keeps recent `downloads` and `trash` items
+- paths that could not be removed are reported and the script exits with status `1`
