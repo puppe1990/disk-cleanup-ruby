@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "tmpdir"
 require "fileutils"
 require "open3"
@@ -6,10 +8,8 @@ require "minitest/autorun"
 require_relative "disk_cleanup"
 
 class DiskCleanupTest < Minitest::Test
-  def with_home
-    Dir.mktmpdir("disk-cleanup-test") do |dir|
-      yield dir
-    end
+  def with_home(&block)
+    Dir.mktmpdir("disk-cleanup-test", &block)
   end
 
   def test_default_categories_include_all_cleanup_groups
