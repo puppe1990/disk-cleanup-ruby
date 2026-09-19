@@ -75,6 +75,29 @@ class InventoryTest < DiskCleanupTest
     end
   end
 
+  def test_project_cleanup_matches_next_dev_and_python_virtualenvs
+    with_home do |home|
+      projects_root = File.join(home, "Projects")
+      next_dev = File.join(projects_root, "app", ".next-dev")
+      next_dev_port = File.join(projects_root, "app", ".next-dev-3001")
+      venv = File.join(projects_root, "py", ".venv")
+      named_venv = File.join(projects_root, "py2", "venv")
+      keep_nextauth = File.join(projects_root, "app", ".nextauth")
+
+      [next_dev, next_dev_port, venv, named_venv, keep_nextauth].each do |path|
+        FileUtils.mkdir_p(path)
+      end
+
+      paths = planned_paths(runner_for(home, "--projects-root=#{projects_root}", "--only=projects", "--dry-run"))
+
+      assert_includes paths, next_dev
+      assert_includes paths, next_dev_port
+      assert_includes paths, venv
+      assert_includes paths, named_venv
+      refute_includes paths, keep_nextauth
+    end
+  end
+
   def test_project_cleanup_handles_common_generated_directories_recursively
     with_home do |home|
       projects_root = File.join(home, "Projects")
@@ -98,10 +121,13 @@ class InventoryTest < DiskCleanupTest
     with_home do |home|
       library_cache_child = File.join(home, "Library", "Caches", "com.test.app")
       npm_cache = File.join(home, ".npm", "_cacache")
+      npm_npx = File.join(home, ".npm", "_npx")
       generic_cache = File.join(home, ".cache")
       bun_cache = File.join(home, ".bun", "install", "cache")
+      pnpm_store = File.join(home, "Library", "pnpm", "store")
+      cargo_registry = File.join(home, ".cargo", "registry")
 
-      [library_cache_child, npm_cache, generic_cache, bun_cache].each do |path|
+      [library_cache_child, npm_cache, npm_npx, generic_cache, bun_cache, pnpm_store, cargo_registry].each do |path|
         FileUtils.mkdir_p(path)
         File.write(File.join(path, "payload"), "x")
       end
@@ -110,8 +136,52 @@ class InventoryTest < DiskCleanupTest
 
       assert_includes paths, library_cache_child
       assert_includes paths, npm_cache
+      assert_includes paths, npm_npx
       assert_includes paths, generic_cache
       assert_includes paths, bun_cache
+      assert_includes paths, pnpm_store
+      assert_includes paths, cargo_registry
+    end
+  end
+
+  def test_cache_cleanup_skips_apple_system_caches
+    with_home do |home|
+      caches = File.join(home, "Library", "Caches")
+      apple = File.join(caches, "com.apple.Safari")
+      cloudkit = File.join(caches, "CloudKit")
+      family = File.join(caches, "FamilyCircle")
+      user_cache = File.join(caches, "com.test.app")
+
+      [apple, cloudkit, family, user_cache].each do |path|
+        FileUtils.mkdir_p(path)
+        File.write(File.join(path, "payload"), "x")
+      end
+
+      paths = planned_paths(runner_for(home, "--only=caches", "--dry-run"))
+
+      assert_includes paths, user_cache
+      refute_includes paths, apple
+      refute_includes paths, cloudkit
+      refute_includes paths, family
+    end
+  end
+
+  def test_cache_cleanup_skips_unwritable_library_caches
+    skip "requires directory permissions" if Process.uid.zero?
+
+    with_home do |home|
+      locked = File.join(home, "Library", "Caches", "locked.app")
+      FileUtils.mkdir_p(locked)
+      File.write(File.join(locked, "payload"), "x")
+      File.chmod(0o500, locked)
+
+      begin
+        paths = planned_paths(runner_for(home, "--only=caches", "--dry-run"))
+
+        refute_includes paths, locked
+      ensure
+        File.chmod(0o700, locked)
+      end
     end
   end
 
@@ -120,7 +190,8 @@ class InventoryTest < DiskCleanupTest
       docker_paths = [
         File.join(home, "Library", "Containers", "com.docker.docker"),
         File.join(home, "Library", "Application Support", "Docker"),
-        File.join(home, "Library", "Application Support", "Docker Desktop")
+        File.join(home, "Library", "Application Support", "Docker Desktop"),
+        File.join(home, ".colima")
       ]
 
       docker_paths.each do |path|
@@ -134,20 +205,23 @@ class InventoryTest < DiskCleanupTest
     end
   end
 
-  def test_claude_cleanup_collects_vm_bundles_only
+  def test_claude_cleanup_collects_vm_bundles_cache_and_code_vm
     with_home do |home|
-      vm_bundles = File.join(home, "Library", "Application Support", "Claude", "vm_bundles")
-      cache = File.join(home, "Library", "Application Support", "Claude", "Cache")
+      claude = File.join(home, "Library", "Application Support", "Claude")
+      vm_bundles = File.join(claude, "vm_bundles")
+      cache = File.join(claude, "Cache")
+      code_vm = File.join(claude, "claude-code-vm")
+      local_storage = File.join(claude, "Local Storage")
 
-      FileUtils.mkdir_p(vm_bundles)
-      FileUtils.mkdir_p(cache)
-      File.write(File.join(vm_bundles, "rootfs.img"), "x")
-      File.write(File.join(cache, "index"), "x")
+      [vm_bundles, cache, code_vm, local_storage].each do |path|
+        FileUtils.mkdir_p(path)
+        File.write(File.join(path, "payload"), "x")
+      end
 
       paths = planned_paths(runner_for(home, "--only=claude", "--dry-run"))
 
-      assert_equal [vm_bundles], paths
-      refute_includes paths, cache
+      assert_equal [cache, code_vm, vm_bundles].sort, paths.sort
+      refute_includes paths, local_storage
     end
   end
 end

@@ -30,6 +30,8 @@ Disk cleanup utility for macOS. Pure Ruby, no runtime dependencies.
 
 ## Caveats
 
-- macOS targeted (`lsof`, `~/Library`, Docker Desktop paths); the suite also runs on Linux.
+- macOS targeted (`lsof`, `~/Library`, Docker Desktop and Colima paths); the suite also runs on Linux.
 - Deleting `node_modules` under a running dev server breaks it. `UsageGuard` skips those paths; `--force` overrides on purpose.
 - `--min-age-days` only affects `downloads` and `trash`; other categories are regenerable by definition.
+- `DiskUsage.bytes_for` counts allocated blocks, not `st_size`, because Colima/Lima VM disks are sparse.
+- `caches` skips Apple system cache directories; do not plan a path that `rm_rf` cannot write.

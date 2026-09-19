@@ -6,11 +6,11 @@ Ruby script to reclaim disk space on macOS by removing regenerable caches, Docke
 
 - `trash`: empty `~/.Trash`
 - `downloads`: remove `*.dmg`, `*.zip`, `*.pkg`, `*.iso` from `~/Downloads`
-- `caches`: remove `~/.npm/_cacache`, `~/.cache`, `~/.bun/install/cache`, and children under `~/Library/Caches`
+- `caches`: remove `~/.npm/_cacache`, `~/.npm/_npx`, `~/.cache`, `~/.bun/install/cache`, `~/.cargo/registry`, `~/Library/pnpm/store`, and writable children under `~/Library/Caches` except Apple system caches (`com.apple.*`, CloudKit, Safari, and similar)
 - `homebrew`: remove `~/Library/Caches/Homebrew/downloads`
-- `docker`: remove Docker Desktop local data directories
-- `claude`: remove `~/Library/Application Support/Claude/vm_bundles`
-- `projects`: recursively remove regenerable directories like `node_modules`, `.next`, `dist`, `build`, `.turbo`, `.cache`, `coverage`, `output_directory`, `tmp`, `.zig-cache`, `.elixir_ls`, `_build`, `deps`, `.netlify`, and `.pytest_cache` under `~/Desktop/Projetos`
+- `docker`: remove Docker Desktop local data directories and `~/.colima`
+- `claude`: remove `~/Library/Application Support/Claude/{vm_bundles,Cache,claude-code-vm}`
+- `projects`: recursively remove regenerable directories like `node_modules`, `.next`, `.next-dev`, `.next-dev-*`, `dist`, `build`, `.turbo`, `.cache`, `coverage`, `output_directory`, `tmp`, `.zig-cache`, `.elixir_ls`, `_build`, `deps`, `.netlify`, `.pytest_cache`, `.venv`, and `venv` under `~/Desktop/Projetos`
 
 ## Usage
 
@@ -82,9 +82,11 @@ pre-commit run --all-files
 ## Notes
 
 - `--dry-run` uses the same discovery logic as live cleanup
+- `--map` and per-path sizes use allocated disk blocks (`st_blocks`), so sparse VM images are not reported at their logical hole size
 - project cleanup walks the project tree recursively and prunes matching cache/build directories in place
 - missing paths are ignored
-- Docker cleanup removes local Docker Desktop data, so images, containers, and volumes will need to be recreated or pulled again
+- Docker cleanup removes local Docker Desktop data and Colima VM data (`~/.colima`), so images, containers, and volumes will need to be recreated or pulled again
+- Apple-protected entries under `~/Library/Caches` are left alone instead of being counted as removal failures
 - directories used by a running process are skipped and listed at the end of the report; `--force` removes them anyway
 - a process marks a directory as in use when its working directory is inside that directory, or when the directory is inside the process working directory (a dev server running at the project root, for example). Broad locations such as the home directory, `Desktop`, `Downloads`, `Library`, and the projects root are not treated as "in use"
 - `--min-age-days=DAYS` only removes Downloads installers and Trash items older than `DAYS`, based on modification time; the default is `0` (no age filter)

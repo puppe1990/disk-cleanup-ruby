@@ -13,12 +13,12 @@ class UsageMapTest < DiskCleanupTest
       downloads = File.join(home, "Downloads")
       videos = File.join(home, "Videos")
 
-      write_payload(File.join(github, "repo.bin"), 6)
-      write_payload(File.join(dotted, "repo.bin"), 2)
-      write_payload(File.join(claude, "cache.bin"), 5)
-      write_payload(File.join(cursor, "cache.bin"), 1)
-      write_payload(File.join(downloads, "movie.bin"), 4)
-      write_payload(File.join(videos, "clip.bin"), 3)
+      write_payload(File.join(github, "repo.bin"), 48)
+      write_payload(File.join(dotted, "repo.bin"), 16)
+      write_payload(File.join(claude, "cache.bin"), 40)
+      write_payload(File.join(cursor, "cache.bin"), 8)
+      write_payload(File.join(downloads, "movie.bin"), 32)
+      write_payload(File.join(videos, "clip.bin"), 24)
 
       runner = runner_for(home, "--projects-root=#{projects_root}", "--map", "--top=2")
       report = runner.space_report
@@ -37,9 +37,9 @@ class UsageMapTest < DiskCleanupTest
       cache = File.join(target, "Cache")
       logs = File.join(target, "Logs")
 
-      write_payload(File.join(projects, "blob.bin"), 7)
-      write_payload(File.join(cache, "blob.bin"), 5)
-      write_payload(File.join(logs, "blob.bin"), 1)
+      write_payload(File.join(projects, "blob.bin"), 48)
+      write_payload(File.join(cache, "blob.bin"), 24)
+      write_payload(File.join(logs, "blob.bin"), 8)
 
       report = runner_for(home, "--map-path=#{target}", "--top=2").space_report
 
@@ -55,9 +55,9 @@ class UsageMapTest < DiskCleanupTest
       medium_dir = File.join(target, "metadata")
       small_file = File.join(target, "notes.txt")
 
-      write_payload(large_file, 9)
-      write_payload(File.join(medium_dir, "blob.bin"), 4)
-      write_payload(small_file, 1)
+      write_payload(large_file, 48)
+      write_payload(File.join(medium_dir, "blob.bin"), 24)
+      write_payload(small_file, 8)
 
       report = runner_for(home, "--map-path=#{target}", "--top=3").space_report
 
@@ -87,8 +87,8 @@ class UsageMapTest < DiskCleanupTest
       large = File.join(target, "Large")
       small = File.join(target, "Small")
 
-      write_payload(File.join(large, "blob.bin"), 8)
-      write_payload(File.join(small, "blob.bin"), 2)
+      write_payload(File.join(large, "blob.bin"), 32)
+      write_payload(File.join(small, "blob.bin"), 8)
 
       io = StringIO.new
       runner_for(home, "--map-path=#{target}", "--top=1").execute(io: io)

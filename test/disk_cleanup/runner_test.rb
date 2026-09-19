@@ -16,20 +16,25 @@ class RunnerTest < DiskCleanupTest
     end
   end
 
-  def test_live_execution_removes_claude_vm_bundles_only
+  def test_live_execution_removes_claude_vm_data_and_keeps_local_storage
     with_home do |home|
-      vm_bundles = File.join(home, "Library", "Application Support", "Claude", "vm_bundles")
-      cache = File.join(home, "Library", "Application Support", "Claude", "Cache")
+      claude = File.join(home, "Library", "Application Support", "Claude")
+      vm_bundles = File.join(claude, "vm_bundles")
+      cache = File.join(claude, "Cache")
+      code_vm = File.join(claude, "claude-code-vm")
+      local_storage = File.join(claude, "Local Storage")
 
-      FileUtils.mkdir_p(vm_bundles)
-      FileUtils.mkdir_p(cache)
-      File.write(File.join(vm_bundles, "rootfs.img"), "x")
-      File.write(File.join(cache, "index"), "keep")
+      [vm_bundles, cache, code_vm, local_storage].each do |path|
+        FileUtils.mkdir_p(path)
+        File.write(File.join(path, "payload"), "x")
+      end
 
       runner_for(home, "--only=claude").execute(io: StringIO.new)
 
       refute File.exist?(vm_bundles)
-      assert File.exist?(cache)
+      refute File.exist?(cache)
+      refute File.exist?(code_vm)
+      assert File.exist?(local_storage)
     end
   end
 
