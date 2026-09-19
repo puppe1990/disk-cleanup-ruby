@@ -18,7 +18,15 @@ module DiskCleanup
   # Finds the paths each category would remove, with their sizes.
   class Inventory
     DOWNLOAD_EXTENSIONS = %w[.dmg .zip .pkg .iso].freeze
-    TOOL_CACHE_PATHS = %w[.npm/_cacache .cache .bun/install/cache].freeze
+    TOOL_CACHE_PATHS = %w[
+      .npm/_cacache
+      .npm/_npx
+      .cache
+      .bun/install/cache
+      .cargo/registry
+      Library/pnpm/store
+    ].freeze
+    APPLE_CACHE_NAMES = %w[CloudKit FamilyCircle Safari GeoServices].freeze
     PROJECT_DIR_NAMES = %w[
       node_modules
       .next
@@ -37,6 +45,8 @@ module DiskCleanup
       deps
       .netlify
       .pytest_cache
+      .venv
+      venv
     ].freeze
 
     def initialize(settings, usage_guard: UsageGuard.new(settings))
@@ -64,8 +74,25 @@ module DiskCleanup
     end
 
     def plan_caches
-      paths = PathListing.existing_children(File.join(@settings.home, "Library", "Caches")) + tool_cache_paths
+      paths = PathListing.existing_children(File.join(@settings.home, "Library", "Caches"))
+        .reject { |path| skip_library_cache?(path) } + tool_cache_paths
       [build_action("caches", "Remove regenerable caches", paths)]
+    end
+
+    def skip_library_cache?(path)
+      return true unless writable_path?(path)
+
+      apple_system_cache?(File.basename(path))
+    end
+
+    def writable_path?(path)
+      File.writable?(path)
+    rescue SystemCallError
+      false
+    end
+
+    def apple_system_cache?(name)
+      name.start_with?("com.apple.") || APPLE_CACHE_NAMES.include?(name)
     end
 
     def tool_cache_paths
@@ -84,15 +111,19 @@ module DiskCleanup
       paths = [
         File.join(@settings.home, "Library", "Containers", "com.docker.docker"),
         File.join(@settings.home, "Library", "Application Support", "Docker"),
-        File.join(@settings.home, "Library", "Application Support", "Docker Desktop")
+        File.join(@settings.home, "Library", "Application Support", "Docker Desktop"),
+        File.join(@settings.home, ".colima")
       ].select { |path| File.exist?(path) }
 
-      [build_action("docker", "Remove Docker Desktop local data", paths)]
+      [build_action("docker", "Remove Docker Desktop and Colima local data", paths)]
     end
 
     def plan_claude
-      path = File.join(@settings.home, "Library", "Application Support", "Claude", "vm_bundles")
-      [build_action("claude", "Remove Claude VM bundles", existing_path(path))]
+      root = File.join(@settings.home, "Library", "Application Support", "Claude")
+      paths = %w[vm_bundles Cache claude-code-vm].flat_map do |name|
+        existing_path(File.join(root, name))
+      end
+      [build_action("claude", "Remove Claude VM bundles and caches", paths)]
     end
 
     def plan_projects
@@ -113,7 +144,7 @@ module DiskCleanup
     end
 
     def project_regenerable_directory?(basename)
-      PROJECT_DIR_NAMES.include?(basename)
+      PROJECT_DIR_NAMES.include?(basename) || basename.start_with?(".next-")
     end
 
     def build_action(category, label, paths)

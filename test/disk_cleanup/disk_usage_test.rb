@@ -13,6 +13,23 @@ class DiskUsageTest < DiskCleanupTest
     end
   end
 
+  def test_bytes_for_counts_allocated_blocks_not_logical_size
+    with_home do |home|
+      path = File.join(home, "sparse.img")
+      File.open(path, "wb") do |file|
+        file.seek((32 * 1024 * 1024) - 1)
+        file.write("x")
+      end
+
+      stat = File.lstat(path)
+      allocated = stat.blocks * 512
+      skip "filesystem did not create a sparse file" unless allocated < stat.size
+
+      assert_equal allocated, DiskCleanup::DiskUsage.bytes_for(path)
+      assert_operator DiskCleanup::DiskUsage.bytes_for(path), :<, 1024 * 1024
+    end
+  end
+
   def test_bytes_for_missing_path_is_zero
     with_home do |home|
       assert_equal 0, DiskCleanup::DiskUsage.bytes_for(File.join(home, "missing"))

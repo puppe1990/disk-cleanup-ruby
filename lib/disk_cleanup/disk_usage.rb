@@ -21,7 +21,7 @@ module DiskCleanup
       return 0 unless File.exist?(path)
 
       if File.file?(path) || File.symlink?(path)
-        File.lstat(path).size
+        allocated_bytes(path)
       else
         directory_bytes(path)
       end
@@ -35,7 +35,7 @@ module DiskCleanup
 
       until queue.empty?
         current = queue.pop
-        total += entry_bytes(current)
+        total += allocated_bytes(current)
         queue.concat(child_paths(current))
       end
 
@@ -49,8 +49,10 @@ module DiskCleanup
       `df -k #{Shellwords.escape(path)}`.lines.last.to_s.split[3].to_i * 1024
     end
 
-    def entry_bytes(path)
-      File.lstat(path).size
+    # Sparse VM disks report a huge st_size and almost no allocated blocks.
+    # Cleanup reports and --map must follow `du`, not the logical hole.
+    def allocated_bytes(path)
+      File.lstat(path).blocks * 512
     rescue Errno::ENOENT, Errno::EACCES, Errno::EPERM
       0
     end
