@@ -7,6 +7,34 @@ require "minitest/autorun"
 
 require_relative "../lib/disk_cleanup"
 
+# Stands in for FileUtils when removal must be refused the way macOS protects
+# app containers: paths stay in place and the direct attempt raises EPERM.
+class RefusingFileUtils
+  def initialize(error = Errno::EPERM)
+    @error = error
+  end
+
+  def rm_rf(_path, **_options)
+    nil
+  end
+
+  def remove_entry(_path)
+    raise @error
+  end
+end
+
+# Stands in for the worktree guard so planner tests do not need real git
+# repositories.
+class StubWorktreeGuard
+  def initialize(removable)
+    @removable = removable
+  end
+
+  def removable?(path)
+    @removable.include?(path)
+  end
+end
+
 # Base class with the helpers shared by the disk cleanup tests.
 class DiskCleanupTest < Minitest::Test
   SCRIPT = File.expand_path("../disk_cleanup.rb", __dir__)
@@ -19,8 +47,14 @@ class DiskCleanupTest < Minitest::Test
     DiskCleanup::Options.parse(["--home=#{home}", *arguments])
   end
 
-  def runner_for(home, *arguments, working_directories: nil)
-    DiskCleanup::Runner.new(parse_options(home, *arguments), working_directories: working_directories)
+  # Tests are hermetic by default: pass `working_directories: nil` only when a
+  # test exercises the lsof lookup against real processes.
+  def runner_for(home, *arguments, working_directories: [], removal: nil)
+    DiskCleanup::Runner.new(
+      parse_options(home, *arguments),
+      working_directories: working_directories,
+      removal: removal
+    )
   end
 
   def planned_paths(runner)
@@ -62,5 +96,31 @@ class DiskCleanupTest < Minitest::Test
     FileUtils.mkdir_p(File.dirname(path))
     File.binwrite(path, "x" * kibibytes * 1024)
     path
+  end
+
+  # Builds a repository with a bare origin so worktree guard tests can push.
+  def create_git_repo(home)
+    origin = File.join(home, "origin.git")
+    repo = File.join(home, "repo")
+    run_git("init", "--bare", "--initial-branch=main", origin)
+    run_git("init", "--initial-branch=main", repo)
+    File.write(File.join(repo, "README.md"), "x")
+    run_git("-C", repo, "add", "README.md")
+    run_git("-C", repo, "-c", "user.name=test", "-c", "user.email=test@example.com", "commit", "-m", "init")
+    run_git("-C", repo, "remote", "add", "origin", origin)
+    run_git("-C", repo, "push", "-u", "origin", "main")
+    repo
+  end
+
+  # Adds a worktree whose branch is already pushed to origin.
+  def add_worktree(repo, path, branch)
+    run_git("-C", repo, "worktree", "add", "-b", branch, path)
+    run_git("-C", path, "push", "-u", "origin", branch)
+    path
+  end
+
+  def run_git(*arguments)
+    env = DiskCleanup::WorktreeGuard::GIT_ENV
+    system(env, "git", *arguments, out: File::NULL, err: File::NULL) || raise("git failed: #{arguments.join(' ')}")
   end
 end

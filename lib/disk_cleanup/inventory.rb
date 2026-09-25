@@ -24,6 +24,13 @@ module DiskCleanup
       .cache
       .bun/install/cache
       .cargo/registry
+      .nvm/.cache
+      .rustup/downloads
+      .rustup/tmp
+      .rvm/archives
+      .rvm/src
+      .rvm/tmp
+      .rvm/log
       Library/pnpm/store
     ].freeze
     APPLE_CACHE_NAMES = %w[CloudKit FamilyCircle Safari GeoServices].freeze
@@ -49,9 +56,10 @@ module DiskCleanup
       venv
     ].freeze
 
-    def initialize(settings, usage_guard: UsageGuard.new(settings))
+    def initialize(settings, usage_guard: UsageGuard.new(settings), worktree_guard: WorktreeGuard.new)
       @settings = settings
       @usage_guard = usage_guard
+      @worktree_guard = worktree_guard
     end
 
     def actions
@@ -124,6 +132,42 @@ module DiskCleanup
         existing_path(File.join(root, name))
       end
       [build_action("claude", "Remove Claude VM bundles and caches", paths)]
+    end
+
+    def plan_cursor
+      path = File.join(@settings.home, "Library", "Application Support", "Cursor", "snapshots")
+      [build_action("cursor", "Remove Cursor history snapshots", existing_path(path))]
+    end
+
+    def plan_agents
+      paths = [
+        File.join(@settings.home, ".codex", "sessions"),
+        File.join(@settings.home, ".codex", "archived_sessions"),
+        File.join(@settings.home, ".grok", "sessions"),
+        File.join(@settings.home, ".grok", "downloads"),
+        File.join(@settings.home, ".grok", "marketplace-cache")
+      ].select { |path| File.exist?(path) }
+
+      [build_action("agents", "Remove Codex and Grok session history and caches", paths)]
+    end
+
+    def plan_worktrees
+      root = File.join(@settings.home, ".config", "superpowers", "worktrees")
+      paths = Dir.exist?(root) ? removable_worktrees(root) : []
+
+      [build_action("worktrees", "Remove clean, pushed superpowers worktrees", paths)]
+    end
+
+    def removable_worktrees(root)
+      paths = []
+      Find.find(root) do |path|
+        git_entry = File.join(path, ".git")
+        next unless File.exist?(git_entry)
+
+        paths << path if File.file?(git_entry) && @worktree_guard.removable?(path)
+        Find.prune
+      end
+      paths
     end
 
     def plan_projects

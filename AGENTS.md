@@ -20,9 +20,10 @@ Disk cleanup utility for macOS. Pure Ruby, no runtime dependencies.
 
 ## Rules
 
-- Never touch the real home directory in tests: use `with_home` for a tmpdir and pass `--home=<tmpdir>`.
+- Never touch the real home directory in tests: use `with_home` for a tmpdir and pass `--home=<tmpdir>`. `runner_for` defaults to no working directories so the suite stays hermetic; pass `working_directories: nil` only for the real lsof test.
 - `Settings` from `Options.parse` is injected everywhere. Do not read ENV or globals inside `lib/`.
 - `UsageGuard` decides what a running process is using; its lsof lookup stays injectable through `working_directories:`.
+- `WorktreeGuard` only allows removing worktrees with no local changes and no commits ahead of their upstream; its tests build real git repositories in tmpdirs and every git call clears leaked `GIT_*` variables.
 - `Removal` re-checks every path after `FileUtils.rm_rf` because rm_rf swallows permission errors. Never report freed bytes without that check.
 - All console output goes through `Reporter`; tests assert on the injected `io` string.
 - New cleanup category: planner in `inventory.rb`, name in `Options::CATEGORY_NAMES`, a line in the README, and a test.

@@ -224,4 +224,91 @@ class InventoryTest < DiskCleanupTest
       refute_includes paths, local_storage
     end
   end
+
+  def test_cache_cleanup_includes_toolchain_caches
+    with_home do |home|
+      toolchain_caches = %w[
+        .nvm/.cache
+        .rustup/downloads
+        .rustup/tmp
+        .rvm/archives
+        .rvm/src
+        .rvm/tmp
+        .rvm/log
+      ].map do |relative|
+        path = File.join(home, relative)
+        FileUtils.mkdir_p(path)
+        File.write(File.join(path, "payload"), "x")
+        path
+      end
+
+      paths = planned_paths(runner_for(home, "--only=caches", "--dry-run"))
+
+      toolchain_caches.each { |path| assert_includes paths, path }
+    end
+  end
+
+  def test_cursor_cleanup_collects_history_snapshots
+    with_home do |home|
+      cursor = File.join(home, "Library", "Application Support", "Cursor")
+      snapshots = File.join(cursor, "snapshots")
+      user_data = File.join(cursor, "User")
+      FileUtils.mkdir_p(snapshots)
+      FileUtils.mkdir_p(user_data)
+
+      paths = planned_paths(runner_for(home, "--only=cursor", "--dry-run"))
+
+      assert_equal [snapshots], paths
+    end
+  end
+
+  def test_agents_cleanup_collects_codex_and_grok_history
+    with_home do |home|
+      tracked = %w[
+        .codex/sessions
+        .codex/archived_sessions
+        .grok/sessions
+        .grok/downloads
+        .grok/marketplace-cache
+      ].map do |relative|
+        path = File.join(home, relative)
+        FileUtils.mkdir_p(path)
+        File.write(File.join(path, "payload"), "x")
+        path
+      end
+      projects = File.join(home, ".grok", "projects")
+      FileUtils.mkdir_p(projects)
+
+      paths = planned_paths(runner_for(home, "--only=agents", "--dry-run"))
+
+      assert_equal tracked.sort, paths.sort
+      refute_includes paths, projects
+    end
+  end
+
+  def test_worktrees_cleanup_plans_only_worktrees_the_guard_allows
+    with_home do |home|
+      root = File.join(home, ".config", "superpowers", "worktrees")
+      safe = File.join(root, "app", "pushed")
+      unsafe = File.join(root, "app", "local-work")
+      clone = File.join(root, "app", "clone")
+      [safe, unsafe, clone].each { |path| FileUtils.mkdir_p(path) }
+      File.write(File.join(safe, ".git"), "gitdir: /nowhere")
+      File.write(File.join(unsafe, ".git"), "gitdir: /nowhere")
+      FileUtils.mkdir_p(File.join(clone, ".git"))
+
+      settings = parse_options(home, "--only=worktrees", "--dry-run")
+      usage_guard = DiskCleanup::UsageGuard.new(settings, working_directories: [])
+      inventory = DiskCleanup::Inventory.new(
+        settings,
+        usage_guard: usage_guard,
+        worktree_guard: StubWorktreeGuard.new([safe])
+      )
+
+      paths = inventory.actions.flat_map(&:paths)
+
+      assert_equal [safe], paths
+      refute_includes paths, clone
+    end
+  end
 end

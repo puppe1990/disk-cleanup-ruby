@@ -119,4 +119,22 @@ class RunnerTest < DiskCleanupTest
       end
     end
   end
+
+  def test_protected_paths_are_listed_and_do_not_fail_the_run
+    with_home do |home|
+      downloads = File.join(home, "Downloads")
+      left_alone = write_file(File.join(downloads, "container.dmg"))
+
+      io = StringIO.new
+      removal = DiskCleanup::Removal.new(file_utils: RefusingFileUtils.new)
+      failures = runner_for(home, "--only=downloads", removal: removal).execute(io: io)
+
+      assert_empty failures
+      assert File.exist?(left_alone)
+      assert_includes io.string, "Protected by macOS (left alone): 1 item(s)"
+      assert_includes io.string, left_alone
+      refute_includes io.string, "Failed to remove"
+      assert_match(/failures=0/, File.read(File.join(home, ".disk_cleanup.log")))
+    end
+  end
 end
