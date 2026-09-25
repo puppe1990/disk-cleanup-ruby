@@ -7,7 +7,9 @@ require_relative "disk_cleanup/usage_guard"
 require_relative "disk_cleanup/removal"
 require_relative "disk_cleanup/inventory"
 require_relative "disk_cleanup/usage_map"
+require_relative "disk_cleanup/byte_format"
 require_relative "disk_cleanup/reporter"
+require_relative "disk_cleanup/run_log"
 require_relative "disk_cleanup/runner"
 
 # Reclaims disk space on macOS by removing regenerable caches, Docker Desktop

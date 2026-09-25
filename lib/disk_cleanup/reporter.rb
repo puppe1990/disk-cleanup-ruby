@@ -8,8 +8,9 @@ module DiskCleanup
       @io.sync = true if @io.respond_to?(:sync=)
     end
 
-    def cleanup_started(dry_run:, free_before:)
+    def cleanup_started(dry_run:, free_before:, started_at: Time.now)
       @io.puts "Disk cleanup"
+      @io.puts "Started: #{started_at.strftime('%Y-%m-%d %H:%M:%S')}"
       @io.puts "Mode: #{dry_run ? 'dry-run' : 'live'}"
       @io.puts "Free before: #{format_bytes(free_before)}"
     end
@@ -70,20 +71,7 @@ module DiskCleanup
     end
 
     def format_bytes(bytes)
-      units = %w[B KiB MiB GiB TiB]
-      value = bytes.to_f
-      unit = units.shift
-
-      while value >= 1024 && !units.empty?
-        value /= 1024.0
-        unit = units.shift
-      end
-
-      if value >= 10 || unit == "B"
-        format("%<value>.0f %<unit>s", value: value, unit: unit)
-      else
-        format("%<value>.1f %<unit>s", value: value, unit: unit)
-      end
+      ByteFormat.format_bytes(bytes)
     end
   end
 end

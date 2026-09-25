@@ -52,6 +52,7 @@ test/disk_cleanup/*_test.rb  tests mirroring lib/
 - `inventory.rb` finds what to clean, `usage_guard.rb` skips what a running process is using
 - `removal.rb` deletes and verifies, `disk_usage.rb` measures
 - `usage_map.rb` and `reporter.rb` render the map and the cleanup summary
+- `run_log.rb` appends one timestamped line per run to `~/.disk_cleanup.log`
 - `runner.rb` ties the pieces together
 
 ## Checks
@@ -90,4 +91,5 @@ pre-commit run --all-files
 - directories used by a running process are skipped and listed at the end of the report; `--force` removes them anyway
 - a process marks a directory as in use when its working directory is inside that directory, or when the directory is inside the process working directory (a dev server running at the project root, for example). Broad locations such as the home directory, `Desktop`, `Downloads`, `Library`, and the projects root are not treated as "in use"
 - `--min-age-days=DAYS` only removes Downloads installers and Trash items older than `DAYS`, based on modification time; the default is `0` (no age filter)
+- every run appends a line with the timestamp, mode, removed bytes, and failure count to `~/.disk_cleanup.log` (or `<--home>/.disk_cleanup.log`); the console also prints a `Started:` line
 - the exit status is `1` when any planned path could not be removed; the failures are listed at the end of the report
