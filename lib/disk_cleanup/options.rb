@@ -20,7 +20,7 @@ module DiskCleanup
 
   # Parses the command line into Settings.
   class Options
-    CATEGORY_NAMES = %w[trash downloads caches homebrew docker claude projects].freeze
+    CATEGORY_NAMES = %w[trash downloads caches homebrew docker claude cursor agents worktrees projects].freeze
 
     def self.parse(argv)
       settings = defaults

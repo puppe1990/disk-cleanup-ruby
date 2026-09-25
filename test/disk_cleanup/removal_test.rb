@@ -45,4 +45,20 @@ class RemovalTest < DiskCleanupTest
       end
     end
   end
+
+  def test_system_protected_paths_are_marked_and_left_alone
+    with_home do |home|
+      container = File.join(home, "Library", "Containers", "com.docker.docker")
+      FileUtils.mkdir_p(container)
+      File.write(File.join(container, ".com.apple.containermanagerd.metadata.plist"), "x")
+
+      removal = DiskCleanup::Removal.new(file_utils: RefusingFileUtils.new)
+      survivors = removal.remove_paths([container])
+
+      assert_equal 1, survivors.size
+      assert_equal container, survivors.first.path
+      assert_equal "protected by macOS", survivors.first.reason
+      assert survivors.first.protected?
+    end
+  end
 end

@@ -3,10 +3,10 @@
 module DiskCleanup
   # Ties the pieces together: build the plan, remove it, report the result.
   class Runner
-    def initialize(settings, working_directories: nil, log: nil, clock: -> { Time.now })
+    def initialize(settings, working_directories: nil, log: nil, clock: -> { Time.now }, removal: nil)
       @settings = settings
       @usage_guard = UsageGuard.new(settings, working_directories: working_directories)
-      @removal = Removal.new
+      @removal = removal || Removal.new
       @log = log || RunLog.new(settings)
       @clock = clock
     end
@@ -32,19 +32,22 @@ module DiskCleanup
 
       actions = plan
       failures = []
+      protected_paths = []
       removed_total = 0
 
       actions.each do |action|
-        failed = @settings.dry_run ? [] : @removal.remove_paths(action.paths)
-        failures.concat(failed)
+        survivors = @settings.dry_run ? [] : @removal.remove_paths(action.paths)
+        protected_paths.concat(survivors.select(&:protected?))
+        failures.concat(survivors.reject(&:protected?))
 
-        removed = bytes_removed(action, failed)
+        removed = bytes_removed(action, survivors)
         removed_total += removed
         reporter.action_result(action, removed)
       end
 
       reporter.cleanup_finished(free_after: DiskUsage.free_bytes("/"), removed_total: removed_total)
       reporter.skipped_actions(actions)
+      reporter.protected_paths(protected_paths)
       reporter.failed_removals(failures)
 
       @log.record(started_at: started_at, mode: mode, removed_total: removed_total, failure_count: failures.size)
@@ -64,11 +67,11 @@ module DiskCleanup
       @settings.dry_run ? "dry-run" : "live"
     end
 
-    def bytes_removed(action, failures)
-      return action.bytes if failures.empty?
+    def bytes_removed(action, survivors)
+      return action.bytes if survivors.empty?
 
-      failed_paths = failures.map(&:path)
-      action.entries.reject { |entry| failed_paths.include?(entry.path) }.sum(&:bytes)
+      surviving_paths = survivors.map(&:path)
+      action.entries.reject { |entry| surviving_paths.include?(entry.path) }.sum(&:bytes)
     end
   end
 end

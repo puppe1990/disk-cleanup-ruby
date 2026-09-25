@@ -32,6 +32,13 @@ module DiskCleanup
       skipped.each { |path| @io.puts "  #{path}" }
     end
 
+    def protected_paths(survivors)
+      return if survivors.empty?
+
+      @io.puts "Protected by macOS (left alone): #{survivors.size} item(s)"
+      survivors.each { |survivor| @io.puts "  #{survivor.path}" }
+    end
+
     def failed_removals(failures)
       return if failures.empty?
 
