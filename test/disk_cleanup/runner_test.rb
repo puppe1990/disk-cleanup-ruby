@@ -62,6 +62,22 @@ class RunnerTest < DiskCleanupTest
     end
   end
 
+  def test_execution_is_recorded_in_the_run_log_and_console
+    with_home do |home|
+      downloads = File.join(home, "Downloads")
+      write_payload(File.join(downloads, "installer.dmg"), 1)
+
+      io = StringIO.new
+      runner_for(home, "--only=downloads", "--dry-run").execute(io: io)
+
+      assert_includes io.string, "Started:"
+      log = File.read(File.join(home, ".disk_cleanup.log"))
+      assert_match(/mode=dry-run/, log)
+      assert_match(/removed=\S+/, log)
+      assert_match(/failures=0/, log)
+    end
+  end
+
   def test_dry_run_reports_no_removal_failures
     skip "requires directory permissions" if Process.uid.zero?
 
