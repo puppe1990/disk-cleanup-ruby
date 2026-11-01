@@ -21,6 +21,8 @@ module DiskCleanup
   # Parses the command line into Settings.
   class Options
     CATEGORY_NAMES = %w[trash downloads caches homebrew docker claude cursor agents worktrees projects].freeze
+    # agents is opt-in: it deletes Codex and Grok transcripts that cannot come back.
+    DEFAULT_CATEGORIES = (CATEGORY_NAMES - %w[agents]).freeze
 
     def self.parse(argv)
       settings = defaults
@@ -36,7 +38,7 @@ module DiskCleanup
         map_path: nil,
         home: File.expand_path("~"),
         projects_root: nil,
-        categories: CATEGORY_NAMES.dup,
+        categories: DEFAULT_CATEGORIES.dup,
         report_limit: 10,
         min_age_days: 0,
         force: false

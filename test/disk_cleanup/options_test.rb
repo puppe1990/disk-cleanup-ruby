@@ -3,14 +3,21 @@
 require_relative "../test_helper"
 
 class OptionsTest < DiskCleanupTest
-  def test_default_categories_include_all_cleanup_groups
+  def test_default_categories_include_every_group_but_agents
     options = DiskCleanup::Options.parse([])
 
     assert_equal false, options.dry_run
     assert_equal false, options.map_only
     assert_nil options.map_path
     assert_equal 10, options.report_limit
-    assert_equal DiskCleanup::Options::CATEGORY_NAMES, options.categories
+    assert_equal DiskCleanup::Options::DEFAULT_CATEGORIES, options.categories
+    refute_includes options.categories, "agents"
+  end
+
+  def test_agents_runs_only_when_asked_for
+    options = DiskCleanup::Options.parse(["--only=agents"])
+
+    assert_equal %w[agents], options.categories
   end
 
   def test_projects_root_defaults_under_home
