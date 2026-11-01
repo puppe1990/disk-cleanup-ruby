@@ -11,7 +11,7 @@ Ruby script to reclaim disk space on macOS by removing regenerable caches, Docke
 - `docker`: remove Docker Desktop local data directories and `~/.colima`
 - `claude`: remove `~/Library/Application Support/Claude/{vm_bundles,Cache,claude-code-vm}`
 - `cursor`: remove Cursor's local history snapshots (`~/Library/Application Support/Cursor/snapshots`)
-- `agents`: remove Codex and Grok session history and caches (`~/.codex/{sessions,archived_sessions}`, `~/.grok/{sessions,downloads,marketplace-cache}`)
+- `agents`: remove Codex and Grok session history and caches (`~/.codex/{sessions,archived_sessions}`, `~/.grok/{sessions,marketplace-cache}`)
 - `worktrees`: remove git worktrees under `~/.config/superpowers/worktrees` that have no uncommitted changes and no commits ahead of their upstream
 - `projects`: recursively remove regenerable directories like `node_modules`, `.next`, `.next-dev`, `.next-dev-*`, `dist`, `build`, `.turbo`, `.cache`, `coverage`, `output_directory`, `tmp`, `.zig-cache`, `.elixir_ls`, `_build`, `deps`, `.netlify`, `.pytest_cache`, `.venv`, and `venv` under `~/Desktop/Projetos`
 
@@ -92,7 +92,7 @@ pre-commit run --all-files
 - project cleanup walks the project tree recursively and prunes matching cache/build directories in place
 - missing paths are ignored
 - Docker cleanup removes local Docker Desktop data and Colima VM data (`~/.colima`), so images, containers, and volumes will need to be recreated or pulled again
-- `agents` removes Codex and Grok session history and downloaded installers; those chat transcripts are not recoverable, so exclude the category with `--skip=agents` when the history matters
+- `agents` removes Codex and Grok session history and the Grok marketplace cache; those chat transcripts are not recoverable, so exclude the category with `--skip=agents` when the history matters. The installed Grok binary in `~/.grok/downloads` is left alone, since `~/.grok/bin/grok` symlinks to it
 - `worktrees` only removes worktrees whose working tree is clean and whose branch has nothing ahead of its upstream; detached worktrees and worktrees without an upstream are left in place
 - Apple-protected entries under `~/Library/Caches` are left alone instead of being counted as removal failures
 - directories used by a running process are skipped and listed at the end of the report; `--force` removes them anyway

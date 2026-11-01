@@ -268,7 +268,6 @@ class InventoryTest < DiskCleanupTest
         .codex/sessions
         .codex/archived_sessions
         .grok/sessions
-        .grok/downloads
         .grok/marketplace-cache
       ].map do |relative|
         path = File.join(home, relative)
@@ -283,6 +282,18 @@ class InventoryTest < DiskCleanupTest
 
       assert_equal tracked.sort, paths.sort
       refute_includes paths, projects
+    end
+  end
+
+  def test_agents_cleanup_keeps_the_installed_grok_binary
+    with_home do |home|
+      downloads = File.join(home, ".grok", "downloads")
+      binary = write_file(File.join(downloads, "grok-macos-aarch64"))
+
+      paths = planned_paths(runner_for(home, "--only=agents", "--dry-run"))
+
+      refute_includes paths, downloads
+      refute_includes paths, binary
     end
   end
 

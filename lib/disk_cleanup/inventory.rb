@@ -139,12 +139,13 @@ module DiskCleanup
       [build_action("cursor", "Remove Cursor history snapshots", existing_path(path))]
     end
 
+    # ~/.grok/downloads is deliberately excluded: it holds the installed grok
+    # binary that ~/.grok/bin/grok symlinks to, so removing it breaks the CLI.
     def plan_agents
       paths = [
         File.join(@settings.home, ".codex", "sessions"),
         File.join(@settings.home, ".codex", "archived_sessions"),
         File.join(@settings.home, ".grok", "sessions"),
-        File.join(@settings.home, ".grok", "downloads"),
         File.join(@settings.home, ".grok", "marketplace-cache")
       ].select { |path| File.exist?(path) }
 
